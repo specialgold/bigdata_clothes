@@ -22,13 +22,36 @@ from gensim import corpora
 import gensim
 from kiwipiepy import Kiwi
 kiwi = Kiwi()
-kiwi.add_user_word("no.21", "NNP")
+brands = {}
+unbrands = {}
+
+
+"""
+fashion domain specific stopwords
+FDSS = sigma N intersection trendreport_y_s_topK 
+
+
+"""
+def brand_mapping(readData):
+    text = readData.lower()
+    for key in brands.keys():
+        text = text.replace(key, brands[key])
+
+    return text
+def brand_unmapping(readData):
+    text = readData.lower()
+    for key in brands.keys():
+        text = text.replace(brands[key], key)
+
+    return text
 def cleanText(readData):
     #text = re.sub('[=+,#/\\\\?:;©^$.@*\"※~&ㆍ!』\\‘|\(\)\[\]\<\>`\'》]', '', readData)
     #text = re.sub('\d\d\d\d', '', text)
-    text = re.sub('[=+,#/\\\\?:;©^$@*\"※~&ㆍ!』\\‘|\(\)\[\]\<\>`\'》]', '', readData)
-    text = text.lower()
-    text = text.replace("no. 21", "no.21")
+    # 소문자 작업
+    text = readData.lower()
+    # 브랜드 명 다른 이름으로 맵핑
+    text = brand_mapping(text)
+    text = re.sub('[=+,#/\\\\?:;©^$@*\"※~&ㆍ!』\\‘|\(\)\[\]\<\>`\'》]', '', text)
     
     return text
 
@@ -150,9 +173,12 @@ def writeKeywordScore_season(key, list):
         if value[1] > 2:
             # if "ï¿½" in value[0]:
             #     continue
-            write_topicScore.write(value[0] + "\t" + str(value[1]) + "\n")
+            item = value[0]
+            if item in unbrands:
+                item = unbrands[item]
+            write_topicScore.write(item + "\t" + str(value[1]) + "\n")
             write_topicScore.flush()
-            print(value[0] + "\t" + str(value[1]))
+            # print(value[0] + "\t" + str(value[1]))
             tmp += 1
     write_topicScore.close()
 
@@ -168,9 +194,11 @@ def writeLDA_season(key, list):
         for line in lines:
             # ws = line.strip().split(' ')
             ws = kiwi.tokenize(line.strip())
+
             for token in ws:
                 w = token.form
-                if len(w) > 0:
+
+                if token.tag[0] is 'N' and len(w) > 0:
                     words.append(w)
         documents.append(words)
     pd.DataFrame({'document':documents})
@@ -181,24 +209,47 @@ def writeLDA_season(key, list):
         # presults = ldamodel.print_topics(num_words=num_words,num_topics=NUM_TOPICS)
         results = ldamodel.show_topics(num_topics=NUM_TOPIC, num_words=num_words, formatted=False)
         key = re.sub('[=+,#/\\\\?:;©^$@*\"※~&ㆍ!』\\‘|\(\)\[\]\<\>`\'》]', '', key)
-        lda_writer = codecs.open("lda_"+key+".txt", 'w', 'utf-8')
+        lda_writer = codecs.open("lda_"+key+"_"+str(NUM_TOPICS)+"_"+str(num_words)+".txt", 'w', 'utf-8')
         for tid, twords in results:
             lda_writer.write("{}".format(tid))
+            # print("{}".format(tid), end="")
             for tword, score in twords:
-                lda_writer.write("|{},{}".format(tword, score))
+                item = tword
+                if item in unbrands:
+                    item = unbrands[item]
+                lda_writer.write("|{},{}".format(item, score))
+                # print("|{},{}".format(item, score), end="")
             lda_writer.write('\n')
+            # print('\n', end="")
         lda_writer.close()
-
+#   오늘 백화점에서  asdasd asdasd No.21 을 샀다.
+#  오늘 백화점 No.21
 
 if __name__ == '__main__':
     print("start")
     # result = kiwi.tokenize('테스트입니다.')
     # for token in result:
     #     print(f"{token.form}\t{token.tag}")
+
     load_wb = load_workbook("report.xlsx")
     load_ws = load_wb['Sheet1']
     get_F_cells = load_ws['F2': 'F317']
     get_I_cells = load_ws['I2': 'I317']
+
+    # for brand name
+    brand_wb = load_workbook("brand_list.xlsx")
+    brand_ws = brand_wb['Sheet1']
+    get_A_brand = brand_ws['A2':'A258']
+    
+    # for brand name
+    for index in range(len(get_A_brand)):
+        brand = get_A_brand[index][0].value
+        brand = brand.lower()
+        brands[brand] = "brand_"+str(index)
+        unbrands["brand_"+str(index)] = brand
+        kiwi.add_user_word(brands[brand], "NNP")
+        # print(get_A_brand[index][0].value)
+        
     season_dict = dict()
     for index in range(len(get_F_cells)):
         season = get_F_cells[index][0].value
