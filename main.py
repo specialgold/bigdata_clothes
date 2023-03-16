@@ -24,7 +24,7 @@ from kiwipiepy import Kiwi
 kiwi = Kiwi()
 brands = {}
 unbrands = {}
-
+stopwords = []
 
 """
 fashion domain specific stopwords
@@ -152,7 +152,8 @@ def writeKeywordScore_season(key, list):
                     continue
                 w = token.form
 
-                if len(w) > 0:
+
+                if len(w) > 0 and w not in stopwords:
                     words.append(w)
                 if pre_word == "":
                     pre_word = w
@@ -198,7 +199,7 @@ def writeLDA_season(key, list):
             for token in ws:
                 w = token.form
 
-                if token.tag[0] is 'N' and len(w) > 0:
+                if token.tag[0] is 'N' and len(w) > 0 and w not in stopwords:
                     words.append(w)
         documents.append(words)
     pd.DataFrame({'document':documents})
@@ -240,7 +241,8 @@ if __name__ == '__main__':
     brand_wb = load_workbook("brand_list.xlsx")
     brand_ws = brand_wb['Sheet1']
     get_A_brand = brand_ws['A2':'A258']
-    
+
+
     # for brand name
     for index in range(len(get_A_brand)):
         brand = get_A_brand[index][0].value
@@ -249,7 +251,18 @@ if __name__ == '__main__':
         unbrands["brand_"+str(index)] = brand
         kiwi.add_user_word(brands[brand], "NNP")
         # print(get_A_brand[index][0].value)
-        
+
+
+    # for f_stopwords
+    f_stopwords = load_workbook("f_stopwords.xlsx")
+    stopwords_ws = f_stopwords['Sheet1']
+    get_A_stopwords = stopwords_ws['A2':'A139']
+    for index in range(len(get_A_stopwords)):
+        s_words = get_A_stopwords[index][0].value
+        s_words = s_words.lower()
+        stopwords.append(s_words)
+
+
     season_dict = dict()
     for index in range(len(get_F_cells)):
         season = get_F_cells[index][0].value
