@@ -259,6 +259,7 @@ if __name__ == '__main__':
     get_A_stopwords = stopwords_ws['A2':'A139']
     for index in range(len(get_A_stopwords)):
         s_words = get_A_stopwords[index][0].value
+        print(s_words)
         s_words = s_words.lower()
         stopwords.append(s_words)
 
